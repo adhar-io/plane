@@ -1,0 +1,143 @@
+# Publish the Adhar fork's Plane images to GHCR.
+#
+# Deliberately NOT a modification of `build-branch.yml`: that workflow is
+# upstream's DockerHub pipeline (per-arch matrix, composite actions, manifest
+# merge) and keeping it untouched means an upstream merge does not conflict here.
+# This file owns one job: build the six runnable images from the same
+# Dockerfiles and push them to ghcr.io/adhar-io/plane-*.
+#
+# What the fork adds to these images is Keycloak / generic-OIDC login
+# (`apps/api/plane/authentication/provider/oauth/keycloak.py` and the admin,
+# web and space surfaces around it), so the Adhar platform can sign people in
+# with the same realm that fronts every other platform service.
+#
+# The platform consumes the result from
+# adhar/platform/stack/packages/application/plane/manifests/ (the `adhar` repo).
+name: Adhar GHCR Release
+
+on:
+  push:
+    tags:
+      # Fork releases are tagged adhar-v<upstream version>-<n>, e.g.
+      # adhar-v1.4.2-1, so upstream's own v* tags never trigger this.
+      - "adhar-v*"
+  workflow_dispatch:
+    inputs:
+      tag:
+        description: "Image tag to publish (defaults to the short SHA)"
+        required: false
+        type: string
+      latest:
+        description: "Also move the :latest tag to this build"
+        required: false
+        type: boolean
+        default: false
+
+concurrency:
+  group: adhar-ghcr-${{ github.ref }}
+  cancel-in-progress: false
+
+permissions:
+  contents: read
+  packages: write
+
+env:
+  REGISTRY: ghcr.io
+  OWNER: adhar-io
+
+jobs:
+  images:
+    name: ${{ matrix.image }}
+    runs-on: ubuntu-24.04
+    strategy:
+      # One failing image must not hide the others — a partial set is still
+      # diagnosable, and the platform pins one tag across all six.
+      fail-fast: false
+      matrix:
+        include:
+          - image: plane-backend
+            context: ./apps/api
+            dockerfile: ./apps/api/Dockerfile.api
+          - image: plane-frontend
+            context: .
+            dockerfile: ./apps/web/Dockerfile.web
+          - image: plane-admin
+            context: .
+            dockerfile: ./apps/admin/Dockerfile.admin
+          - image: plane-space
+            context: .
+            dockerfile: ./apps/space/Dockerfile.space
+          - image: plane-live
+            context: .
+            dockerfile: ./apps/live/Dockerfile.live
+          - image: plane-proxy
+            context: ./apps/proxy
+            dockerfile: ./apps/proxy/Dockerfile.ce
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v4
+
+      - name: Resolve the image tags
+        id: meta
+        env:
+          INPUT_TAG: ${{ inputs.tag }}
+          INPUT_LATEST: ${{ inputs.latest }}
+        run: |
+          set -euo pipefail
+          image="${REGISTRY}/${OWNER}/${{ matrix.image }}"
+          latest=false
+          if [ "${GITHUB_REF_TYPE}" = "tag" ]; then
+            # adhar-v1.4.2-1 -> 1.4.2-1, so the tag reads like a version.
+            tag="${GITHUB_REF_NAME#adhar-v}"
+            latest=true
+          elif [ -n "${INPUT_TAG}" ]; then
+            tag="${INPUT_TAG}"
+            latest="${INPUT_LATEST}"
+          else
+            tag="$(git rev-parse --short HEAD)"
+            latest="${INPUT_LATEST}"
+          fi
+          tags="${image}:${tag}"
+          if [ "${latest}" = "true" ]; then
+            tags="${tags}"$'\n'"${image}:latest"
+          fi
+          {
+            echo "tags<<EOF"
+            echo "${tags}"
+            echo "EOF"
+          } >> "$GITHUB_OUTPUT"
+          echo "Publishing:"; echo "${tags}"
+
+      - name: Set up QEMU
+        uses: docker/setup-qemu-action@v3
+
+      - name: Set up Buildx
+        uses: docker/setup-buildx-action@v3
+
+      - name: Log in to GHCR
+        uses: docker/login-action@v3
+        with:
+          registry: ${{ env.REGISTRY }}
+          username: ${{ github.actor }}
+          password: ${{ secrets.GITHUB_TOKEN }}
+
+      - name: Build and push
+        uses: docker/build-push-action@v6
+        with:
+          context: ${{ matrix.context }}
+          file: ${{ matrix.dockerfile }}
+          # arm64 is built so the images run on Graviton and Apple-silicon
+          # clusters as well as the usual amd64 cloud nodes.
+          platforms: linux/amd64,linux/arm64
+          push: true
+          provenance: false
+          tags: ${{ steps.meta.outputs.tags }}
+          labels: |
+            org.opencontainers.image.source=${{ github.server_url }}/${{ github.repository }}
+            org.opencontainers.image.revision=${{ github.sha }}
+          # The Vite apps bake their base URLs at build time, but the platform
+          # serves every surface from one host behind its gateway, so the
+          # defaults (relative URLs) are what we want — do not pin a host here
+          # or the image becomes environment-specific.
+          cache-from: type=gha,scope=${{ matrix.image }}
+          cache-to: type=gha,scope=${{ matrix.image }},mode=max

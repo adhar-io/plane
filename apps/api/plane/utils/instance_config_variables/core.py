@@ -162,6 +162,49 @@ gitea_config_variables = [
     },
 ]
 
+keycloak_config_variables = [
+    {
+        "key": "IS_KEYCLOAK_ENABLED",
+        "value": os.environ.get("IS_KEYCLOAK_ENABLED", "0"),
+        "category": "KEYCLOAK",
+        "is_encrypted": False,
+    },
+    {
+        # The realm issuer, e.g. https://keycloak.example.com/realms/adhar.
+        # Endpoints are read from its discovery document, not built by hand.
+        "key": "KEYCLOAK_ISSUER_URL",
+        "value": os.environ.get("KEYCLOAK_ISSUER_URL"),
+        "category": "KEYCLOAK",
+        "is_encrypted": False,
+    },
+    {
+        # Optional. Where the API server reaches the realm when that differs
+        # from the browser-facing issuer, e.g. a cluster-local service URL.
+        "key": "KEYCLOAK_INTERNAL_ISSUER_URL",
+        "value": os.environ.get("KEYCLOAK_INTERNAL_ISSUER_URL"),
+        "category": "KEYCLOAK",
+        "is_encrypted": False,
+    },
+    {
+        "key": "KEYCLOAK_CLIENT_ID",
+        "value": os.environ.get("KEYCLOAK_CLIENT_ID"),
+        "category": "KEYCLOAK",
+        "is_encrypted": False,
+    },
+    {
+        "key": "KEYCLOAK_CLIENT_SECRET",
+        "value": os.environ.get("KEYCLOAK_CLIENT_SECRET"),
+        "category": "KEYCLOAK",
+        "is_encrypted": True,
+    },
+    {
+        "key": "ENABLE_KEYCLOAK_SYNC",
+        "value": os.environ.get("ENABLE_KEYCLOAK_SYNC", "0"),
+        "category": "KEYCLOAK",
+        "is_encrypted": False,
+    },
+]
+
 smtp_config_variables = [
     {
         "key": "ENABLE_SMTP",
@@ -257,6 +300,7 @@ core_config_variables = [
     *github_config_variables,
     *gitlab_config_variables,
     *gitea_config_variables,
+    *keycloak_config_variables,
     *smtp_config_variables,
     *llm_config_variables,
     *unsplash_config_variables,
