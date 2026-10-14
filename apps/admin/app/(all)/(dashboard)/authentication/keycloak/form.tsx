@@ -52,6 +52,9 @@ export function InstanceKeycloakConfigForm(props: Props) {
     defaultValues: {
       KEYCLOAK_ISSUER_URL: config["KEYCLOAK_ISSUER_URL"] || "",
       KEYCLOAK_INTERNAL_ISSUER_URL: config["KEYCLOAK_INTERNAL_ISSUER_URL"] || "",
+      KEYCLOAK_AUTO_JOIN_WORKSPACE: config["KEYCLOAK_AUTO_JOIN_WORKSPACE"] || "",
+      KEYCLOAK_ADMIN_GROUPS: config["KEYCLOAK_ADMIN_GROUPS"] || "",
+      KEYCLOAK_GUEST_GROUPS: config["KEYCLOAK_GUEST_GROUPS"] || "",
       KEYCLOAK_CLIENT_ID: config["KEYCLOAK_CLIENT_ID"],
       KEYCLOAK_CLIENT_SECRET: config["KEYCLOAK_CLIENT_SECRET"],
       ENABLE_KEYCLOAK_SYNC: config["ENABLE_KEYCLOAK_SYNC"] || "0",
@@ -121,6 +124,41 @@ export function InstanceKeycloakConfigForm(props: Props) {
     },
   ];
 
+  const KEYCLOAK_MEMBERSHIP_FIELDS: TControllerInputFormField<KeycloakConfigFormValues>[] = [
+    {
+      key: "KEYCLOAK_AUTO_JOIN_WORKSPACE",
+      type: "text",
+      label: "Auto-join workspace (optional)",
+      description: (
+        <>
+          Slug of the workspace every Keycloak user becomes a member of on sign-in, so nobody has to be invited. Leave
+          empty to keep membership invitation-based.
+        </>
+      ),
+      placeholder: "adhar",
+      error: Boolean(errors.KEYCLOAK_AUTO_JOIN_WORKSPACE),
+      required: false,
+    },
+    {
+      key: "KEYCLOAK_ADMIN_GROUPS",
+      type: "text",
+      label: "Admin groups",
+      description: <>Comma-separated realm groups whose members join as workspace Admins.</>,
+      placeholder: "platform-admin",
+      error: Boolean(errors.KEYCLOAK_ADMIN_GROUPS),
+      required: false,
+    },
+    {
+      key: "KEYCLOAK_GUEST_GROUPS",
+      type: "text",
+      label: "Guest groups",
+      description: <>Comma-separated realm groups whose members join as Guests. Everyone else joins as a Member.</>,
+      placeholder: "platform-viewer",
+      error: Boolean(errors.KEYCLOAK_GUEST_GROUPS),
+      required: false,
+    },
+  ];
+
   const KEYCLOAK_SERVICE_FIELD: TCopyField[] = [
     {
       key: "Callback_URI",
@@ -149,6 +187,9 @@ export function InstanceKeycloakConfigForm(props: Props) {
       reset({
         KEYCLOAK_ISSUER_URL: response.find((item) => item.key === "KEYCLOAK_ISSUER_URL")?.value,
         KEYCLOAK_INTERNAL_ISSUER_URL: response.find((item) => item.key === "KEYCLOAK_INTERNAL_ISSUER_URL")?.value,
+        KEYCLOAK_AUTO_JOIN_WORKSPACE: response.find((item) => item.key === "KEYCLOAK_AUTO_JOIN_WORKSPACE")?.value,
+        KEYCLOAK_ADMIN_GROUPS: response.find((item) => item.key === "KEYCLOAK_ADMIN_GROUPS")?.value,
+        KEYCLOAK_GUEST_GROUPS: response.find((item) => item.key === "KEYCLOAK_GUEST_GROUPS")?.value,
         KEYCLOAK_CLIENT_ID: response.find((item) => item.key === "KEYCLOAK_CLIENT_ID")?.value,
         KEYCLOAK_CLIENT_SECRET: response.find((item) => item.key === "KEYCLOAK_CLIENT_SECRET")?.value,
         ENABLE_KEYCLOAK_SYNC: response.find((item) => item.key === "ENABLE_KEYCLOAK_SYNC")?.value,
@@ -177,6 +218,20 @@ export function InstanceKeycloakConfigForm(props: Props) {
           <div className="col-span-2 flex flex-col gap-y-4 pt-1 md:col-span-1">
             <div className="pt-2.5 text-18 font-medium">Keycloak-provided details for Plane</div>
             {KEYCLOAK_FORM_FIELDS.map((field) => (
+              <ControllerInput
+                key={field.key}
+                control={control}
+                type={field.type}
+                name={field.key}
+                label={field.label}
+                description={field.description}
+                placeholder={field.placeholder}
+                error={field.error}
+                required={field.required}
+              />
+            ))}
+            <div className="pt-4 text-18 font-medium">Workspace membership</div>
+            {KEYCLOAK_MEMBERSHIP_FIELDS.map((field) => (
               <ControllerInput
                 key={field.key}
                 control={control}

@@ -203,6 +203,28 @@ keycloak_config_variables = [
         "category": "KEYCLOAK",
         "is_encrypted": False,
     },
+    {
+        # Optional. Slug of the workspace every Keycloak user joins on sign-in;
+        # empty leaves membership to invitations.
+        "key": "KEYCLOAK_AUTO_JOIN_WORKSPACE",
+        "value": os.environ.get("KEYCLOAK_AUTO_JOIN_WORKSPACE", ""),
+        "category": "KEYCLOAK",
+        "is_encrypted": False,
+    },
+    {
+        # Comma-separated realm groups that join as workspace Admin.
+        "key": "KEYCLOAK_ADMIN_GROUPS",
+        "value": os.environ.get("KEYCLOAK_ADMIN_GROUPS", "platform-admin"),
+        "category": "KEYCLOAK",
+        "is_encrypted": False,
+    },
+    {
+        # Comma-separated realm groups that join as Guest; everyone else is a Member.
+        "key": "KEYCLOAK_GUEST_GROUPS",
+        "value": os.environ.get("KEYCLOAK_GUEST_GROUPS", "platform-viewer"),
+        "category": "KEYCLOAK",
+        "is_encrypted": False,
+    },
 ]
 
 smtp_config_variables = [

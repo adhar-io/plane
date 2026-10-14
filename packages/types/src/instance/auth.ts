@@ -63,6 +63,9 @@ export type TInstanceGiteaAuthenticationConfigurationKeys =
 export type TInstanceKeycloakAuthenticationConfigurationKeys =
   | "KEYCLOAK_ISSUER_URL"
   | "KEYCLOAK_INTERNAL_ISSUER_URL"
+  | "KEYCLOAK_AUTO_JOIN_WORKSPACE"
+  | "KEYCLOAK_ADMIN_GROUPS"
+  | "KEYCLOAK_GUEST_GROUPS"
   | "KEYCLOAK_CLIENT_ID"
   | "KEYCLOAK_CLIENT_SECRET"
   | "ENABLE_KEYCLOAK_SYNC";

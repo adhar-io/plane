@@ -16,6 +16,7 @@ from plane.authentication.adapter.error import (
     AUTHENTICATION_ERROR_CODES,
     AuthenticationException,
 )
+from plane.authentication.utils.keycloak_workspace import normalise_groups
 
 # Keycloak is reached over the cluster network in a platform install, so a
 # discovery or token call must not be able to hang a gunicorn worker.
@@ -71,6 +72,10 @@ class KeycloakOAuthProvider(OauthAdapter):
 
     provider = "keycloak"
     scope = "openid email profile"
+    # Realm group names from the `groups` claim, read in set_user_data. The
+    # callback views hand them to auto_join_workspace(); empty when the client
+    # has no groups scope.
+    groups = ()
 
     def __init__(self, request, code=None, state=None, callback=None):
         (
@@ -244,6 +249,8 @@ class KeycloakOAuthProvider(OauthAdapter):
                 error_code=AUTHENTICATION_ERROR_CODES["KEYCLOAK_OAUTH_PROVIDER_ERROR"],
                 error_message="KEYCLOAK_OAUTH_PROVIDER_ERROR",
             )
+
+        self.groups = tuple(normalise_groups(user_info_response.get("groups")))
 
         super().set_user_data(
             {

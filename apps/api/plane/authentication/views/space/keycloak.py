@@ -12,6 +12,7 @@ from django.views import View
 
 # Module imports
 from plane.authentication.provider.oauth.keycloak import KeycloakOAuthProvider
+from plane.authentication.utils.keycloak_workspace import auto_join_workspace
 from plane.authentication.utils.login import user_login
 from plane.license.models import Instance
 from plane.authentication.utils.host import base_host
@@ -88,6 +89,9 @@ class KeycloakCallbackSpaceEndpoint(View):
         try:
             provider = KeycloakOAuthProvider(request=request, code=code)
             user = provider.authenticate()
+            # Membership follows the realm: land the user in the platform
+            # workspace with a role from their groups (no-op when unconfigured).
+            auto_join_workspace(user=user, groups=provider.groups)
             # Login the user and record his device info
             user_login(request=request, user=user, is_space=True)
             # Process workspace and project invitations
