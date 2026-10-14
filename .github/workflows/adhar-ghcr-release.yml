@@ -88,7 +88,7 @@ jobs:
     name: ${{ matrix.image }} (${{ matrix.arch }})
     needs: meta
     # Native runners: no QEMU. ubuntu-24.04-arm is GitHub's hosted arm64 runner.
-    runs-on: ${{ matrix.arch == 'arm64' && 'ubuntu-24.04-arm' || 'ubuntu-24.04' }}
+    runs-on: ${{ matrix.runner }}
     timeout-minutes: 120
     strategy:
       # One failing image must not hide the others — a partial set is still
@@ -96,7 +96,15 @@ jobs:
       fail-fast: false
       matrix:
         arch: [amd64, arm64]
+        image: [plane-backend, plane-frontend, plane-admin, plane-space, plane-live, plane-proxy]
+        # Each include below matches one original matrix key, so GitHub adds its
+        # extra fields to every combination with that key instead of creating
+        # a new combination (the documented "expanding configurations" form).
         include:
+          - arch: amd64
+            runner: ubuntu-24.04
+          - arch: arm64
+            runner: ubuntu-24.04-arm
           - image: plane-backend
             context: ./apps/api
             dockerfile: ./apps/api/Dockerfile.api
@@ -200,13 +208,16 @@ jobs:
           cd /tmp/digests
           # Both architectures must be present, or the platform would pull a
           # manifest that silently lacks one of them.
-          count=$(ls | wc -l)
-          if [ "${count}" -ne 2 ]; then
-            echo "expected 2 digests for ${IMAGE}, found ${count}:"; ls -la; exit 1
+          refs=()
+          for f in *; do
+            refs+=("${IMAGE}@sha256:${f}")
+          done
+          if [ "${#refs[@]}" -ne 2 ]; then
+            echo "expected 2 digests for ${IMAGE}, found ${#refs[@]}: ${refs[*]}"; exit 1
           fi
           tags=(-t "${IMAGE}:${TAG}")
           if [ "${LATEST}" = "true" ]; then
             tags+=(-t "${IMAGE}:latest")
           fi
-          docker buildx imagetools create "${tags[@]}" $(printf "${IMAGE}@sha256:%s " *)
+          docker buildx imagetools create "${tags[@]}" "${refs[@]}"
           docker buildx imagetools inspect "${IMAGE}:${TAG}"
