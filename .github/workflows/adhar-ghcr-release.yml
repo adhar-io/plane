@@ -29,6 +29,12 @@ on:
       # Fork releases are tagged adhar-v<upstream version>-<n>, e.g.
       # adhar-v1.4.2-1, so upstream's own v* tags never trigger this.
       - "adhar-v*"
+    # A release/<version> branch publishes the same way as a tag. It exists
+    # because tag pushes to this fork stopped producing runs on 2026-10-14
+    # while branch pushes elsewhere in the org did; pushing a branch is the
+    # second trigger path, with the version read from the branch name.
+    branches:
+      - "release/**"
   workflow_dispatch:
     inputs:
       tag:
@@ -72,6 +78,10 @@ jobs:
           if [ "${GITHUB_REF_TYPE}" = "tag" ]; then
             # adhar-v1.4.2-1 -> 1.4.2-1, so the tag reads like a version.
             tag="${GITHUB_REF_NAME#adhar-v}"
+            latest=true
+          elif [ "${GITHUB_REF_TYPE}" = "branch" ] && [ "${GITHUB_REF_NAME#release/}" != "${GITHUB_REF_NAME}" ]; then
+            # release/1.4.2-2 -> 1.4.2-2
+            tag="${GITHUB_REF_NAME#release/}"
             latest=true
           elif [ -n "${INPUT_TAG}" ]; then
             tag="${INPUT_TAG}"
